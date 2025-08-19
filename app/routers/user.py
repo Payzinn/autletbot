@@ -96,7 +96,7 @@ async def get_trial(callback: CallbackQuery):
     await callback.message.answer(f"Ваша ссылка для пробного доступа: {final_link}")
 
 @router.callback_query(F.data == "give_invite_link")
-async def give_invite_link(callback: CallbackQuery):
+async def give_invite_link(callback: CallbackQuery, state: FSMContext):
     user = await UsersDAO.find_one_or_none(tg_id=callback.from_user.id)
     if not user:
         await callback.answer("Ошибка: вы не зарегистрированы", show_alert=True)
@@ -106,7 +106,7 @@ async def give_invite_link(callback: CallbackQuery):
         await callback.message.answer(
             "Скопируйте и вставьте Вашу реферальную ссылку в поле ниже"
         )
-        await ReferralForm.waiting_for_ref_link.set()  
+        await state.set_state(ReferralForm.waiting_for_ref_link)
         return
 
     invite = await bot.create_chat_invite_link(
