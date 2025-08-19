@@ -8,7 +8,6 @@ from os.path import abspath, dirname
 sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 from app.database.db import Base, DATABASE_URL
 from app.database.invites.models import Invite
-from app.database.subscriptions.models import Subscription
 from app.database.users.models import Users
 # Мои импорты
 
