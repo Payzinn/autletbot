@@ -128,7 +128,7 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
         photo=input_file,
         caption=f"Ваша пригласительная ссылка: {invite.invite_link}"
     )
-    
+
 @router.message(ReferralForm.waiting_for_ref_link)
 async def save_ref_link(message: Message, state: FSMContext):
     ref_link = message.text.strip()
@@ -164,10 +164,11 @@ async def process_invite(event, user):
         creates_join_request=False
     )
 
-    qr_path = f"qrcodes/{user.tg_id}.png"
-    os.makedirs(BASE_DIR / "qrcodes", exist_ok=True)
+    qr_dir = BASE_DIR / "qrcodes"
+    os.makedirs(qr_dir, exist_ok=True)
+    qr_path = qr_dir / f"{user.tg_id}.png"
     img = qrcode.make(invite.invite_link)
-    img.save(BASE_DIR / qr_path)
+    img.save(qr_path)
 
     await UsersDAO.update(user.id, invite_link=invite.invite_link)
     await InvitesDAO.add_invite(owner_id=user.id, invite_link=invite.invite_link, qr_code_path=str(qr_path))
