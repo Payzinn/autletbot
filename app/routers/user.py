@@ -7,9 +7,7 @@ from app.config import settings
 from app.keyboards.kb_inline import main, abonement_keyboard
 from app.database.users.dao import UsersDAO 
 from app.database.invites.dao import InvitesDAO
-from app.database.subscriptions.dao import SubscriptionsDAO
 from app.database.invites.states import ReferralForm
-from app.database.subscriptions.models import SubscriptionType
 from datetime import datetime
 from datetime import timedelta
 from aiogram.types import ChatMemberUpdated
