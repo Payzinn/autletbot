@@ -101,8 +101,9 @@ async def give_invite_link(callback: CallbackQuery):
         return
 
     if not user.referral_link:
-        await callback.message.answer("Скопируйте и вставьте Вашу реферальную ссылку в поле ниже")
-        return
+        ref_link = settings.DEFAULT_REF_LINK + f"?user={user.tg_id}"
+        await UsersDAO.update(user.id, referral_link=ref_link)
+        user = await UsersDAO.find_one_or_none(id=user.id)
 
     invite = await bot.create_chat_invite_link(
         chat_id=settings.CHAT_ID,
@@ -110,9 +111,19 @@ async def give_invite_link(callback: CallbackQuery):
         creates_join_request=False
     )
 
-    await UsersDAO.update(user.id, invite_link=invite.invite_link)
+    qr_path = f"qrcodes/{user.tg_id}.png"
+    os.makedirs("qrcodes", exist_ok=True)
+    img = qrcode.make(invite.invite_link)
+    img.save(qr_path)
 
-    await callback.message.answer(f"Ваша пригласительная ссылка: {invite.invite_link}")
+    await UsersDAO.update(user.id, invite_link=invite.invite_link)
+    await InvitesDAO.add_invite(owner_id=user.id, invite_link=invite.invite_link, qr_code_path=qr_path)
+
+    with open(qr_path, "rb") as qr_file:
+        await callback.message.answer_photo(
+            photo=qr_file,
+            caption=f"Ваша пригласительная ссылка: {invite.invite_link}"
+        )
 
 async def save_ref_link(message: Message, state: FSMContext):
     ref_link = message.text.strip()
