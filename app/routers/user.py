@@ -135,33 +135,39 @@ async def save_ref_link(message: Message, state: FSMContext):
     
 async def process_invite(event, user):
     print(f"process_invite: user.id: {user.id}, type: {type(user.id)}")
+    
     if not isinstance(user.id, int):
         if isinstance(event, CallbackQuery):
             await event.message.answer(f"Ошибка: user.id не число, а {type(user.id)}: {user.id}")
         else:
             await event.answer(f"Ошибка: user.id не число, а {type(user.id)}: {user.id}")
         return
+
     invite = await bot.create_chat_invite_link(
         chat_id=settings.CHAT_ID,
         name=user.username,
         creates_join_request=False
     )
+
     qr_path = f"qrcodes/{user.tg_id}.png"
     os.makedirs("qrcodes", exist_ok=True)
     img = qrcode.make(invite.invite_link)
     img.save(qr_path)
+
     await UsersDAO.update(user.id, invite_link=invite.invite_link)
     await InvitesDAO.add_invite(owner_id=user.id, invite_link=invite.invite_link, qr_code_path=qr_path)
-    if isinstance(event, CallbackQuery):
-        await event.message.answer_photo(
-            photo=open(qr_path, "rb"),
-            caption=f"Ваша пригласительная ссылка: {invite.invite_link}"
-        )
-    else:
-        await event.answer_photo(
-            photo=open(qr_path, "rb"),
-            caption=f"Ваша пригласительная ссылка: {invite.invite_link}"
-        )
+
+    with open(qr_path, "rb") as qr_file:
+        if isinstance(event, CallbackQuery):
+            await event.message.answer_photo(
+                photo=qr_file,
+                caption=f"Ваша пригласительная ссылка: {invite.invite_link}"
+            )
+        else:
+            await event.answer_photo(
+                photo=qr_file,
+                caption=f"Ваша пригласительная ссылка: {invite.invite_link}"
+            )
 
 @router.chat_member()
 async def track_invites(event: ChatMemberUpdated):
