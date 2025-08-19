@@ -128,7 +128,8 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
         photo=input_file,
         caption=f"Ваша пригласительная ссылка: {invite.invite_link}"
     )
-
+    
+@router.message(ReferralForm.waiting_for_ref_link)
 async def save_ref_link(message: Message, state: FSMContext):
     ref_link = message.text.strip()
     print(f"ref_link: {ref_link}, type: {type(ref_link)}")
