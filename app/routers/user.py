@@ -21,6 +21,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 bot = Bot(token=settings.BOT_TOKEN)
 router = Router()
 
+
+
 @router.message(CommandStart())
 async def start(message: Message):
     tg_id = message.from_user.id
@@ -44,7 +46,7 @@ async def buy_abonement(callback: CallbackQuery):
     if not user:
         await callback.answer("Ошибка: вы не зарегистрированы, пропишите /start", show_alert=True)
         return
-
+    
     if user.referral_link:
         await callback.message.edit_text("У вас уже есть абонемент")
         return
@@ -55,12 +57,12 @@ async def buy_abonement(callback: CallbackQuery):
     
     final_link = referral_url or settings.DEFAULT_REF_LINK
 
-    await SubscriptionsDAO.add_subscription(
-        user_id=user.id,
-        type_sub=SubscriptionType.BASE,
-        referral_link_used=final_link,
-        expires_at=None
-    )
+    # await SubscriptionsDAO.add_subscription(
+    #     user_id=user.id,
+    #     type_sub=SubscriptionType.BASE,
+    #     referral_link_used=final_link,
+    #     expires_at=None
+    # )
 
     print(f"buy_abonement: user.id: {user.id}, type: {type(user.id)}, final_link: {final_link}")
     await callback.message.edit_text(
@@ -73,6 +75,10 @@ async def get_trial(callback: CallbackQuery):
     user = await UsersDAO.find_one_or_none(tg_id=int(callback.from_user.id))
     if not user:
         await callback.answer("Ошибка: вы не зарегистрированы, пропишите /start", show_alert=True)
+        return
+    
+    if user.referral_link:
+        await callback.message.edit_text("У вас уже есть абонемент")
         return
 
     if user.referral_link:
@@ -89,13 +95,13 @@ async def get_trial(callback: CallbackQuery):
     
     final_link = (referral_url or settings.DEFAULT_REF_LINK) + "&promo"
 
-    expires_at = datetime.now() + timedelta(days=7)
-    await SubscriptionsDAO.add_subscription(
-        user_id=user.id,
-        type_sub=SubscriptionType.TRIAL,
-        referral_link_used=final_link,
-        expires_at=expires_at
-    )
+    # expires_at = datetime.now() + timedelta(days=7)
+    # await SubscriptionsDAO.add_subscription(
+    #     user_id=user.id,
+    #     type_sub=SubscriptionType.TRIAL,
+    #     referral_link_used=final_link,
+    #     expires_at=expires_at
+    # )
 
     await callback.message.edit_text(
         "Ваша ссылка для пробного доступа:",
@@ -232,3 +238,7 @@ async def track_invites(event: ChatMemberUpdated):
 
     print(f"track_invites: updating user id={user.id}, tg_id={event.from_user.id} with invite_link={event.invite_link.invite_link}, invited_by={ref_owner.username}")
     await UsersDAO.update(user.id, invite_link=event.invite_link.invite_link, invited_by=ref_owner.username)
+
+@router.message()
+async def mes(message: Message):
+    print(message.chat.id)
