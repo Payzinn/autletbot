@@ -32,3 +32,10 @@ class InvitesDAO(BaseDAO):
             query = select(cls.model).filter_by(owner_id=owner_id)
             execution = await session.execute(query)
             return execution.scalars().all()
+        
+    @classmethod
+    async def find_by_link(cls, link: str):
+        async with async_session_maker() as session:
+            query = select(cls.model).where(cls.model.invite_link == link)
+            result = await session.execute(query)
+            return result.scalars().first()

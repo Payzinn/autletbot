@@ -12,6 +12,7 @@ from app.database.invites.states import ReferralForm
 from app.database.subscriptions.models import SubscriptionType
 from datetime import datetime
 from datetime import timedelta
+from aiogram.types import ChatMemberUpdated
 import qrcode
 import os
 
@@ -39,9 +40,8 @@ async def buy_abonement(callback: CallbackQuery):
         await callback.answer("Ошибка: вы не зарегистрированы", show_alert=True)
         return
 
-    active_sub = await SubscriptionsDAO.get_active_subscription(user.id)
-    if active_sub:
-        await callback.message.answer("У Вас уже есть абонемент")
+    if user.referral_link:
+        await callback.message.answer("У вас уже есть абонемент")
         return
 
     referral_url = None
@@ -71,10 +71,8 @@ async def get_trial(callback: CallbackQuery):
         await callback.answer("Ошибка: вы не зарегистрированы", show_alert=True)
         return
 
-    active_sub = await SubscriptionsDAO.get_active_subscription(user.id)
-    if active_sub:
-        trial_link = f"{active_sub.referral_link_used}&promo"
-        await callback.message.answer(f"Ваш пробный доступ: {trial_link}")
+    if user.referral_link:
+        await callback.message.answer("У вас уже есть абонемент")
         return
 
     referral_url = None
@@ -164,3 +162,23 @@ async def process_invite(event, user):
             photo=open(qr_path, "rb"),
             caption=f"Ваша пригласительная ссылка: {invite.invite_link}"
         )
+
+@router.chat_member()
+async def track_invites(event: ChatMemberUpdated):
+    if event.new_chat_member.status != "member":
+        return
+
+    if not event.invite_link:
+        return
+
+    invite = await InvitesDAO.find_by_link(event.invite_link.invite_link)
+    if not invite:
+        return
+
+    ref_owner = await UsersDAO.find_by_id(invite.owner_id)
+    if not ref_owner:
+        return
+
+    user = await UsersDAO.find_one_or_none(tg_id=event.from_user.id)
+    if user:
+        await UsersDAO.update(user.id, invited_by=ref_owner.username)
