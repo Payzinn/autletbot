@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import CommandStart, IS_MEMBER
 from aiogram import Bot
@@ -199,3 +199,11 @@ async def track_invites(event: ChatMemberUpdated):
     user = await UsersDAO.find_one_or_none(tg_id=event.from_user.id)
     if user:
         await UsersDAO.update(user.id, invited_by=ref_owner.username)
+
+
+async def send_qr_code(event, qr_path):
+    input_file = FSInputFile(qr_path)
+    if isinstance(event, CallbackQuery):
+        await event.message.answer_photo(input_file, caption="Ваша пригласительная ссылка:")
+    else:
+        await event.answer_photo(input_file, caption="Ваша пригласительная ссылка:")
