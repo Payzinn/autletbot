@@ -11,5 +11,10 @@ main = InlineKeyboardMarkup(inline_keyboard=[
 
 async def abonement_keyboard(link: str, button_text: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=button_text, url=link)]
+        [InlineKeyboardButton(text=button_text, url=link)],
+        [InlineKeyboardButton(text="Назад", callback_data="back")]
     ])
+
+back = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Назад", callback_data="back")]
+])

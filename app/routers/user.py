@@ -1,10 +1,10 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
-from aiogram.filters import CommandStart, IS_MEMBER
+from aiogram.filters import CommandStart
 from aiogram import Bot
 from app.config import settings
-from app.keyboards.kb_inline import main, abonement_keyboard
+from app.keyboards.kb_inline import main, abonement_keyboard, back
 from app.database.users.dao import UsersDAO 
 from app.database.invites.dao import InvitesDAO
 from app.database.invites.states import ReferralForm
@@ -20,23 +20,48 @@ bot = Bot(token=settings.BOT_TOKEN)
 router = Router()
 
 
-
 @router.message(CommandStart())
-async def start(message: Message):
+async def start_cmd(message: Message):
+    await handle_start(message)
+
+
+@router.callback_query(F.data == "back")
+async def back_handler(callback: CallbackQuery):
+    await handle_start(callback.message)
+
+
+async def handle_start(message: Message):
     tg_id = message.from_user.id
     user = await UsersDAO.find_one_or_none(tg_id=int(tg_id))
     if user is None:
-        user = await UsersDAO.add_user(username=message.from_user.username or f"user_{tg_id}", 
-                                       tg_id=tg_id)
+        user = await UsersDAO.add_user(
+            username=message.from_user.username or f"user_{tg_id}", 
+            tg_id=tg_id
+        )
         print(f"start: created new user id={user.id}, tg_id={tg_id}")
 
-    user_channel_status = await bot.get_chat_member(chat_id=settings.CHAT_ID, 
-                                                   user_id=message.from_user.id)
+    user_channel_status = await bot.get_chat_member(
+        chat_id=settings.CHAT_ID, 
+        user_id=message.from_user.id
+    )
     print(f"start: user_id={tg_id}, channel_status={user_channel_status.status}")
+
     if user_channel_status.status != "left":
-        await message.answer("Выберите необходимое действие", reply_markup=main)
+        try:
+            await message.edit_text("Выберите необходимое действие", reply_markup=main)
+        except:
+            # await message.delete()
+            await message.answer("Выберите необходимое действие", reply_markup=main)
     else:
-        await message.answer("Для получения пробного периода Вам необходимо подписаться на группу https://t.me/autlettravelbiznes")
+        try:
+            await message.edit_text(
+                "Для получения пробного периода Вам необходимо подписаться на группу https://t.me/autlettravelbiznes"
+            )
+        except:
+            # await message.delete()
+            await message.answer(
+                "Для получения пробного периода Вам необходимо подписаться на группу https://t.me/autlettravelbiznes"
+            )
 
 @router.callback_query(F.data == "buy_abonement")
 async def buy_abonement(callback: CallbackQuery):
@@ -46,7 +71,7 @@ async def buy_abonement(callback: CallbackQuery):
         return
     
     if user.referral_link:
-        await callback.message.edit_text("У вас уже есть абонемент")
+        await callback.message.edit_text("У вас уже есть абонемент",reply_markup=back)
         return
 
     referral_url = None
@@ -76,7 +101,7 @@ async def get_trial(callback: CallbackQuery):
         return
     
     if user.referral_link:
-        await callback.message.edit_text("У вас уже есть абонемент")
+        await callback.message.edit_text("У вас уже есть абонемент", reply_markup=back)
         return
 
     if user.referral_link:
@@ -124,9 +149,10 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
         invite_record = await InvitesDAO.find_one_or_none(owner_id=user.id)
         if invite_record and os.path.exists(invite_record.qr_code_path):
             input_file = FSInputFile(invite_record.qr_code_path)
+            await callback.message.delete()
             await callback.message.answer_photo(
                 photo=input_file,
-                caption=f"Ваша пригласительная ссылка: {user.invite_link}"
+                caption=f"Ваша пригласительная ссылка: {user.invite_link}", reply_markup=back
             )
             return
 
@@ -139,7 +165,7 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
         input_file = FSInputFile(qr_path)
         await callback.message.answer_photo(
             photo=input_file,
-            caption=f"Ваша пригласительная ссылка: {user.invite_link}"
+            caption=f"Ваша пригласительная ссылка: {user.invite_link}", reply_markup=back
         )
         return
 
@@ -168,7 +194,7 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
     input_file = FSInputFile(qr_path)
     await callback.message.answer_photo(
         photo=input_file,
-        caption=f"Ваша пригласительная ссылка: {invite.invite_link}"
+        caption=f"Ваша пригласительная ссылка: {invite.invite_link}", reply_markup=back
     )
 
 @router.message(ReferralForm.waiting_for_ref_link)
