@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     BOT_TOKEN: str
-    CHAT_ID: str
+    CHAT_ID: int
     DB_USER: str
     DB_PORT: int
     DB_PASS: str

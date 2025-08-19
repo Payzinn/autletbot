@@ -220,7 +220,7 @@ async def track_invites(event: ChatMemberUpdated):
         print(f"track_invites: wrong chat_id={event.chat.id}, expected={settings.CHAT_ID}")
         return
 
-    if event.new_chat_member.status not in ["member", "administrator", "creator"]:
+    if event.new_chat_member.status != "member":
         print(f"track_invites: exiting due to status={event.new_chat_member.status}")
         return
 
@@ -241,7 +241,7 @@ async def track_invites(event: ChatMemberUpdated):
     user = await UsersDAO.find_one_or_none(tg_id=event.from_user.id)
     if not user:
         print(f"track_invites: no user found for tg_id={event.from_user.id}, creating new user")
-        user = await UsersDAO.add_user(username=event.from_user.username or f"user_{event.from_user.id}", 
+        user = await UsersDAO.add_user(username=event.from_user.username, 
                                        tg_id=event.from_user.id)
 
     print(f"track_invites: updating user id={user.id}, tg_id={event.from_user.id} with invite_link={event.invite_link.invite_link}, invited_by={ref_owner.username}")
