@@ -9,7 +9,6 @@ class Settings(BaseSettings):
     DB_NAME: str
     DB_HOST: str
     DEFAULT_REF_LINK: str
-    BOT_USERNAME: str
 
 
     class Config:
