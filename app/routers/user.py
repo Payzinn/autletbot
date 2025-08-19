@@ -15,7 +15,9 @@ from datetime import timedelta
 from aiogram.types import ChatMemberUpdated
 import qrcode
 import os
+from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 bot = Bot(token=settings.BOT_TOKEN)
 router = Router()
 
@@ -145,8 +147,6 @@ async def save_ref_link(message: Message, state: FSMContext):
     await state.clear()
     
 async def process_invite(event, user):
-    print(f"process_invite: user.id: {user.id}, type: {type(user.id)}")
-    
     if not isinstance(user.id, int):
         msg = f"Ошибка: user.id не число, а {type(user.id)}: {user.id}"
         if isinstance(event, CallbackQuery):
@@ -162,12 +162,12 @@ async def process_invite(event, user):
     )
 
     qr_path = f"qrcodes/{user.tg_id}.png"
-    os.makedirs("qrcodes", exist_ok=True)
+    os.makedirs(BASE_DIR / "qrcodes", exist_ok=True)
     img = qrcode.make(invite.invite_link)
-    img.save(qr_path)
+    img.save(BASE_DIR / qr_path)
 
     await UsersDAO.update(user.id, invite_link=invite.invite_link)
-    await InvitesDAO.add_invite(owner_id=user.id, invite_link=invite.invite_link, qr_code_path=qr_path)
+    await InvitesDAO.add_invite(owner_id=user.id, invite_link=invite.invite_link, qr_code_path=str(qr_path))
 
     await send_qr_code(event, qr_path, invite.invite_link)
 
@@ -192,9 +192,12 @@ async def track_invites(event: ChatMemberUpdated):
         await UsersDAO.update(user.id, invited_by=ref_owner.username)
 
 
-async def send_qr_code(event, qr_path):
-    input_file = FSInputFile(qr_path)
+async def send_qr_code(event, qr_path, invite_link):
+    full_path = BASE_DIR / qr_path
+    input_file = FSInputFile(full_path)
+    caption = f"Ваша пригласительная ссылка: {invite_link}"
+
     if isinstance(event, CallbackQuery):
-        await event.message.answer_photo(input_file, caption="Ваша пригласительная ссылка:")
+        await event.message.answer_photo(input_file, caption=caption)
     else:
-        await event.answer_photo(input_file, caption="Ваша пригласительная ссылка:")
+        await event.answer_photo(input_file, caption=caption)
