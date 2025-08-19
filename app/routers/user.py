@@ -120,11 +120,34 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
         await state.set_state(ReferralForm.waiting_for_ref_link)
         return
 
+    if user.invite_link:
+        invite_record = await InvitesDAO.find_one_or_none(owner_id=user.id)
+        if invite_record and os.path.exists(invite_record.qr_code_path):
+            input_file = FSInputFile(invite_record.qr_code_path)
+            await callback.message.answer_photo(
+                photo=input_file,
+                caption=f"Ваша пригласительная ссылка: {user.invite_link}"
+            )
+            return
+
+        qr_dir = BASE_DIR / "qrcodes"
+        os.makedirs(qr_dir, exist_ok=True)
+        qr_path = qr_dir / f"{user.tg_id}.png"
+        img = qrcode.make(user.invite_link)
+        img.save(qr_path)
+
+        input_file = FSInputFile(qr_path)
+        await callback.message.answer_photo(
+            photo=input_file,
+            caption=f"Ваша пригласительная ссылка: {user.invite_link}"
+        )
+        return
+
     invite = await bot.create_chat_invite_link(
         chat_id=settings.CHAT_ID,
         name=user.username,
         creates_join_request=False,
-        member_limit=1
+        member_limit=0  
     )
     print(f"give_invite_link: created invite_link={invite.invite_link} for user_id={user.id}")
 
@@ -135,7 +158,11 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
     img.save(qr_path)
 
     await UsersDAO.update(user.id, invite_link=invite.invite_link)
-    invite_record = await InvitesDAO.add_invite(owner_id=user.id, invite_link=invite.invite_link, qr_code_path=str(qr_path))
+    invite_record = await InvitesDAO.add_invite(
+        owner_id=user.id,
+        invite_link=invite.invite_link,
+        qr_code_path=str(qr_path)
+    )
     print(f"give_invite_link: saved invite_record={invite_record.id if invite_record else None} for invite_link={invite.invite_link}")
 
     input_file = FSInputFile(qr_path)
