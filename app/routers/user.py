@@ -117,15 +117,15 @@ async def give_invite_link(callback: CallbackQuery):
     os.makedirs("qrcodes", exist_ok=True)
     img = qrcode.make(invite.invite_link)
     img.save(qr_path)
-
+    
     await UsersDAO.update(user.id, invite_link=invite.invite_link)
     await InvitesDAO.add_invite(owner_id=user.id, invite_link=invite.invite_link, qr_code_path=qr_path)
+    input_file = FSInputFile(qr_path)
 
-    with open(qr_path, "rb") as qr_file:
-        await callback.message.answer_photo(
-            photo=qr_file,
-            caption=f"Ваша пригласительная ссылка: {invite.invite_link}"
-        )
+    await callback.message.answer_photo(
+        photo=input_file,
+        caption=f"Ваша пригласительная ссылка: {invite.invite_link}"
+    )
 
 async def save_ref_link(message: Message, state: FSMContext):
     ref_link = message.text.strip()
