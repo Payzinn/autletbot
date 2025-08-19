@@ -9,11 +9,7 @@ main = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="Выдать пригласительную ссылку", callback_data="give_invite_link")],
 ])
 
-async def abonement_keyboard(user_id: int) -> InlineKeyboardMarkup:
-    user = await UsersDAO.find_one_or_none(id=user_id)
-    if not user:
-        return InlineKeyboardMarkup(inline_keyboard=[])
-    link = user.referral_link or settings.DEFAULT_REF_LINK
+async def abonement_keyboard(link: str, button_text: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Купить абонемент", url=link)]
+        [InlineKeyboardButton(text=button_text, url=link)]
     ])
