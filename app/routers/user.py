@@ -148,10 +148,11 @@ async def process_invite(event, user):
     print(f"process_invite: user.id: {user.id}, type: {type(user.id)}")
     
     if not isinstance(user.id, int):
+        msg = f"Ошибка: user.id не число, а {type(user.id)}: {user.id}"
         if isinstance(event, CallbackQuery):
-            await event.message.answer(f"Ошибка: user.id не число, а {type(user.id)}: {user.id}")
+            await event.message.answer(msg)
         else:
-            await event.answer(f"Ошибка: user.id не число, а {type(user.id)}: {user.id}")
+            await event.answer(msg)
         return
 
     invite = await bot.create_chat_invite_link(
@@ -168,17 +169,7 @@ async def process_invite(event, user):
     await UsersDAO.update(user.id, invite_link=invite.invite_link)
     await InvitesDAO.add_invite(owner_id=user.id, invite_link=invite.invite_link, qr_code_path=qr_path)
 
-    with open(qr_path, "rb") as qr_file:
-        if isinstance(event, CallbackQuery):
-            await event.message.answer_photo(
-                photo=qr_file,
-                caption=f"Ваша пригласительная ссылка: {invite.invite_link}"
-            )
-        else:
-            await event.answer_photo(
-                photo=qr_file,
-                caption=f"Ваша пригласительная ссылка: {invite.invite_link}"
-            )
+    await send_qr_code(event, qr_path, invite.invite_link)
 
 @router.chat_member()
 async def track_invites(event: ChatMemberUpdated):
