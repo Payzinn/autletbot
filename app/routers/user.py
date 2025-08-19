@@ -103,9 +103,11 @@ async def give_invite_link(callback: CallbackQuery):
         return
 
     if not user.referral_link:
-        ref_link = settings.DEFAULT_REF_LINK + f"?user={user.tg_id}"
-        await UsersDAO.update(user.id, referral_link=ref_link)
-        user = await UsersDAO.find_one_or_none(id=user.id)
+        await callback.message.answer(
+            "Скопируйте и вставьте Вашу реферальную ссылку в поле ниже"
+        )
+        await ReferralForm.waiting_for_ref_link.set()  
+        return
 
     invite = await bot.create_chat_invite_link(
         chat_id=settings.CHAT_ID,
