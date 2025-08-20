@@ -21,7 +21,8 @@ bot = Bot(token=settings.BOT_TOKEN)
 router = Router()
 
 @router.message(CommandStart())
-async def start_cmd(message: Message):
+async def start_cmd(message: Message, state: FSMContext):
+    await state.clear()
     await handle_start(message)
 
 @router.callback_query(F.data == "back")

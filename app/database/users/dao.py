@@ -36,11 +36,13 @@ class UsersDAO(BaseDAO):
     async def find_by_tg_id(cls, tg_id: int):
         async with async_session_maker() as session:
             try:
-                query = select(cls.model).filter_by(tg_id=tg_id)
+                tg_id = int(tg_id)  
+                query = select(cls.model).filter(cls.model.tg_id == tg_id)
                 result = await session.execute(query)
                 return result.scalars().first()
             except Exception as e:
-                return False
+                print(f"Ошибка find_by_tg_id: {type(e).__name__} - {str(e)}")
+                return None
 
     @classmethod
     async def find_by_username(cls, username: str):
@@ -80,5 +82,29 @@ class UsersDAO(BaseDAO):
     @classmethod
     async def delete(cls, user_id: int):
         async with async_session_maker() as session:
-            await session.execute(delete(cls.model).where(cls.model.id == user_id))
-            await session.commit()
+            try:
+                await session.execute(
+                    update(Users)
+                    .where(Users.referral_id.in_(
+                        select(Referrals.id).where(Referrals.user_id == user_id)
+                    ))
+                    .values(referral_id=None)
+                )
+
+                await session.execute(
+                    delete(Referrals).where(Referrals.user_id == user_id)
+                )
+
+                await session.execute(
+                    delete(Invite).where(Invite.owner_id == user_id)
+                )
+
+                await session.execute(
+                    delete(cls.model).where(cls.model.id == user_id)
+                )
+
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                print(f"Ошибка при удалении пользователя: {type(e).__name__} - {str(e)}")
+                return None
