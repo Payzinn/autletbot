@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command
 from aiogram import Bot
 from app.config import settings
-from app.keyboards.kb_inline import admin_info_about_user, user_info
+from app.keyboards.kb_inline import admin_info_about_user, user_info, confirm_delete_kb
 from app.database.users.dao import UsersDAO 
 from app.database.referrals.dao import ReferralsDAO 
 from app.database.invites.dao import InvitesDAO
@@ -38,7 +38,7 @@ async def user_info_input(callback: CallbackQuery, state: FSMContext):
 async def user_info_check(message: Message, state: FSMContext):
     if int(message.from_user.id) == settings.ADMIN_ID:
         if not message.text.isdigit():
-            message.answer("ID пользователя должно содержать только цифры!\Введите Телеграм ID пользователя ещё раз: ")
+            await message.answer("ID пользователя должно содержать только цифры!\Введите Телеграм ID пользователя ещё раз: ")
             return
         
         await state.update_data(user_id=int(message.text))
@@ -48,19 +48,22 @@ async def user_info_check(message: Message, state: FSMContext):
         if not user:
             await message.answer("Пользователь не найден в базе данных.\n Введите ID ещё раз")
             return
-        await message.answer("Инфо о пользователе", reply_markup=user_info)
+        await message.answer(f"Инфо о пользователе\nUsername: {user.username}\nTelegram ID: {user.tg_id}\nДата регистрации: {user.created_at}\nПригласительная ссылка: {user.invite_link or "Нет"}\nКем приглашен: {user.invited_by or "Никто"}", reply_markup=user_info)
 
 @router.callback_query(F.data == "unbind_link")
 async def user_unbind_link(callback: CallbackQuery, state: FSMContext):
     if int(callback.from_user.id) == settings.ADMIN_ID:
         data = await state.get_data()
         user = await UsersDAO.find_by_tg_id(int(data['user_id']))
-        user_referal = await ReferralsDAO.update_status(referral_id=user.referral_id, status=ReferralStatus.DISABLED)
-        get_referral = await ReferralsDAO.find_by_user_id_active(user.id)
-        if not user_referal or not get_referral:
-            await callback.message.answer(f"Не удалось отвязать рефералку у пользователя [{data["user_id"]}].\nСкорее всего у него все рефки отвязаны.")      
-            return  
-        await callback.message.answer(f"У пользователя [{data["user_id"]}] отвязалась рефералка:\n{get_referral.referral_link}") 
+        
+        active_referral = await ReferralsDAO.find_by_user_id_active(user.id)
+        if not active_referral:
+            await callback.message.answer(f"Не удалось отвязать рефералку у пользователя [{data['user_id']}].\nСкорее всего у него все рефки уже отвязаны.")      
+            return
+        
+        await ReferralsDAO.update_status(referral_id=active_referral.id, status=ReferralStatus.DISABLED)
+        
+        await callback.message.answer(f"У пользователя [{data['user_id']}] отвязалась рефералка:\n{active_referral.referral_link}") 
 
 @router.callback_query(F.data == "all_ref_links")
 async def user_all_links(callback: CallbackQuery, state: FSMContext):
@@ -80,7 +83,7 @@ async def user_all_links(callback: CallbackQuery, state: FSMContext):
 
         text = f"Все реферальные ссылки пользователя [{user.tg_id}]:\n"
         for num,ref in enumerate(referrals):
-            text += f"{num+1}.{ref.referral_link} (статус: {ref.status.value})\n"
+            text += f"{num+1}. {ref.referral_link} (статус: {ref.status.value})\n"
         await state.set_state(Admin.make_active)
         await callback.message.answer(f"{text}\n\nВведите номер ссылки которая должна стать активной")
 
@@ -109,3 +112,44 @@ async def make_link_active(message: Message, state: FSMContext):
     await message.answer(f"Ссылка {referrals[index].referral_link} теперь активна!")
     await state.clear()
         
+@router.callback_query(F.data == "delete_user")
+async def delete_user(callback: CallbackQuery, state: FSMContext):
+    if int(callback.from_user.id) != settings.ADMIN_ID:
+        return
+    
+    data = await state.get_data()
+    user_id = data.get("user_id")
+
+    print(f"Попытка удалить пользователя с user_id={user_id} ({type(user_id)})")
+    if not user_id:
+        await callback.message.answer("Сначала выберите пользователя.")
+        return
+
+    await callback.message.answer(
+        f"Вы уверены, что хотите удалить пользователя с ID [{user_id}]?\nЭто удалит его из всех таблиц.",
+        reply_markup=confirm_delete_kb
+    )
+
+@router.callback_query(F.data == "confirm_delete_yes")
+async def confirm_delete_yes(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    user_id = data.get("user_id")
+    user = await UsersDAO.find_by_tg_id(user_id)
+    print(f"user_id: {user_id}")
+    print(f"data: {data}")
+    if not user_id:
+        await callback.message.answer("Пользователь не выбран.")
+        return
+    
+    await ReferralsDAO.delete_by_user_id(user.id)
+
+    await UsersDAO.delete(user.id)
+
+    await callback.message.answer(f"Пользователь [{user_id}] успешно удалён!")
+    await state.clear()
+
+
+@router.callback_query(F.data == "confirm_delete_no")
+async def confirm_delete_no(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer("Удаление пользователя отменено.")
+    await state.clear()

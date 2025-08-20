@@ -15,3 +15,4 @@ class Users(Base):
     invited_by = Column(String, nullable=True)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
+    referrals = relationship("Referrals", backref="user", cascade="all, delete")

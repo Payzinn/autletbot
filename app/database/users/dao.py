@@ -1,4 +1,4 @@
-from sqlalchemy import select, insert, update
+from sqlalchemy import select, insert, update, delete
 from app.database.db import async_session_maker
 from app.database.users.models import Users
 from app.database.referrals.models import Referrals 
@@ -77,3 +77,8 @@ class UsersDAO(BaseDAO):
                 await session.rollback()
                 print(f"Ошибка при обновлении пользователя: {type(e).__name__} - {str(e)}")
                 return None
+    @classmethod
+    async def delete(cls, user_id: int):
+        async with async_session_maker() as session:
+            await session.execute(delete(cls.model).where(cls.model.id == user_id))
+            await session.commit()

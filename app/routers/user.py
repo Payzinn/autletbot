@@ -129,46 +129,27 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Ошибка: вы не зарегистрированы", show_alert=True)
         return
 
-    if not user.referral_id:
+    active_referral = await ReferralsDAO.find_by_user_id_active(user.id)
+    if not active_referral:
         await callback.message.edit_text(
-            "Скопируйте и вставьте Вашу реферальную ссылку в поле ниже", reply_markup=back
+            "У вас нет активной реферальной ссылки.\nСкопируйте и вставьте Вашу реферальную ссылку в поле ниже:",
+            reply_markup=back
         )
         await state.set_state(ReferralForm.waiting_for_ref_link)
         return
 
-    if user.invite_link:
-        invite_record = await InvitesDAO.find_by_owner(user.id)
-        referral_link = await ReferralsDAO.find_by_user_id_active(user.id)
+    invite_record = await InvitesDAO.find_by_owner(user.id)
+    qr_dir = BASE_DIR / "qrcodes"
+    os.makedirs(qr_dir, exist_ok=True)
 
-        if invite_record and any(os.path.exists(record.qr_code_path) for record in invite_record):
-            existing_invite = next(record for record in invite_record if os.path.exists(record.qr_code_path))
+    if invite_record:
+        existing_invite = next((record for record in invite_record if os.path.exists(record.qr_code_path)), None)
+        if existing_invite:
             input_file = FSInputFile(existing_invite.qr_code_path)
-
+            caption = f"Ваша пригласительная ссылка: {existing_invite.invite_link}\n" \
+                      f"Ваша активная реферальная ссылка: {active_referral.referral_link}"
             await callback.message.delete()
-
-            caption = f"Ваша пригласительная ссылка: {existing_invite.invite_link}"
-            if referral_link:  
-                caption += f"\n\nВаша реферальная ссылка: {referral_link.referral_link}"
-
-            await callback.message.answer_photo(
-                photo=input_file,
-                caption=caption,
-                reply_markup=back
-            )
-            return
-
-        qr_dir = BASE_DIR / "qrcodes"
-        os.makedirs(qr_dir, exist_ok=True)
-        qr_path = qr_dir / f"{user.tg_id}.png"
-        invite_record = invite_record[0] if invite_record else None
-        if invite_record:
-            img = qrcode.make(invite_record.invite_link)
-            img.save(qr_path)
-            input_file = FSInputFile(qr_path)
-            await callback.message.answer_photo(
-                photo=input_file,
-                caption=f"Ваша пригласительная ссылка: {invite_record.invite_link}", reply_markup=back
-            )
+            await callback.message.answer_photo(photo=input_file, caption=caption, reply_markup=back)
             return
 
     invite = await bot.create_chat_invite_link(
@@ -177,26 +158,21 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
         creates_join_request=False,
         member_limit=1
     )
-    print(f"give_invite_link: created invite_link={invite.invite_link} for user_id={user.id}")
 
-    qr_dir = BASE_DIR / "qrcodes"
-    os.makedirs(qr_dir, exist_ok=True)
     qr_path = qr_dir / f"{user.tg_id}.png"
     img = qrcode.make(invite.invite_link)
     img.save(qr_path)
 
+    # Сохраняем invite
     await UsersDAO.update(user.id, invite_link=invite.invite_link)
-    invite_record = await InvitesDAO.add_invite(
-        owner_id=user.id,
-        invite_link=invite.invite_link,
-        qr_code_path=str(qr_path)
-    )
-    print(f"give_invite_link: saved invite_record={invite_record.id if invite_record else None} for invite_link={invite.invite_link}")
+    await InvitesDAO.add_invite(owner_id=user.id, invite_link=invite.invite_link, qr_code_path=str(qr_path))
 
     input_file = FSInputFile(qr_path)
     await callback.message.answer_photo(
         photo=input_file,
-        caption=f"Ваша пригласительная ссылка: {invite.invite_link}", reply_markup=back
+        caption=f"Ваша пригласительная ссылка: {invite.invite_link}\n"
+                f"Ваша активная реферальная ссылка: {active_referral.referral_link}",
+        reply_markup=back
     )
 
 @router.message(ReferralForm.waiting_for_ref_link)
