@@ -24,33 +24,25 @@ router = Router()
 async def start_cmd(message: Message):
     await handle_start(message)
 
-
 @router.callback_query(F.data == "back")
 async def back_handler(callback: CallbackQuery):
+    await callback.message.delete()
     await handle_start(callback.message)
-
 
 async def handle_start(message: Message):
     tg_id = message.from_user.id
-    user = await UsersDAO.find_one_or_none(tg_id=int(tg_id))
+    user = await UsersDAO.find_by_tg_id(tg_id)
     if user is None:
-        user = await UsersDAO.add_user(
-            username=message.from_user.username or f"user_{tg_id}", 
-            tg_id=tg_id
-        )
+        user = await UsersDAO.add_user(tg_id=tg_id, username=message.from_user.username or f"user_{tg_id}")
         print(f"start: created new user id={user.id}, tg_id={tg_id}")
 
-    user_channel_status = await bot.get_chat_member(
-        chat_id=settings.CHAT_ID, 
-        user_id=message.from_user.id
-    )
+    user_channel_status = await bot.get_chat_member(chat_id=settings.CHAT_ID, user_id=message.from_user.id)
     print(f"start: user_id={tg_id}, channel_status={user_channel_status.status}")
 
     if user_channel_status.status != "left":
         try:
             await message.edit_text("Выберите необходимое действие", reply_markup=main)
         except:
-            # await message.delete()
             await message.answer("Выберите необходимое действие", reply_markup=main)
     else:
         try:
@@ -58,25 +50,28 @@ async def handle_start(message: Message):
                 "Для получения пробного периода Вам необходимо подписаться на группу https://t.me/autlettravelbiznes"
             )
         except:
-            # await message.delete()
             await message.answer(
                 "Для получения пробного периода Вам необходимо подписаться на группу https://t.me/autlettravelbiznes"
             )
 
 @router.callback_query(F.data == "buy_abonement")
 async def buy_abonement(callback: CallbackQuery):
-    user = await UsersDAO.find_one_or_none(tg_id=int(callback.from_user.id))
+    user = await UsersDAO.find_by_tg_id(int(callback.from_user.id))
     if not user:
         await callback.answer("Ошибка: вы не зарегистрированы, пропишите /start", show_alert=True)
         return
     
     if user.referral_link:
-        await callback.message.edit_text("У вас уже есть абонемент",reply_markup=back)
-        return
+        referral = await ReferralsDAO.find_by_user_id(user.id)
+        if referral and referral.status == "active":
+            await callback.message.edit_text("У вас уже есть активный абонемент", reply_markup=back)
+            return
 
     referral_url = None
     if user.invite_link:
-        referral_url = await UsersDAO.find_referral_by_invite_link(user.invite_link)
+        referral = await UsersDAO.find_referral_by_invite_link(user.invite_link)
+        if referral:
+            referral_url = referral
     
     final_link = referral_url or settings.DEFAULT_REF_LINK
 
@@ -95,26 +90,22 @@ async def buy_abonement(callback: CallbackQuery):
 
 @router.callback_query(F.data == "get_seven_days_trial")
 async def get_trial(callback: CallbackQuery):
-    user = await UsersDAO.find_one_or_none(tg_id=int(callback.from_user.id))
+    user = await UsersDAO.find_by_tg_id(int(callback.from_user.id))
     if not user:
         await callback.answer("Ошибка: вы не зарегистрированы, пропишите /start", show_alert=True)
         return
     
     if user.referral_link:
-        await callback.message.edit_text("У вас уже есть абонемент", reply_markup=back)
-        return
-
-    if user.referral_link:
-        trial_link = f"{user.referral_link}&promo"
-        await callback.message.edit_text(
-            "Ваш пробный доступ:",
-            reply_markup=await abonement_keyboard(link=trial_link, button_text="🍀 Получить пробный период")
-        )
-        return
+        referral = await ReferralsDAO.find_by_user_id(user.id)
+        if referral and referral.status == "active":
+            await callback.message.edit_text("У вас уже есть активный пробный период", reply_markup=back)
+            return
 
     referral_url = None
     if user.invite_link:
-        referral_url = await UsersDAO.find_referral_by_invite_link(user.invite_link)
+        referral = await UsersDAO.find_referral_by_invite_link(user.invite_link)
+        if referral:
+            referral_url = referral
     
     final_link = (referral_url or settings.DEFAULT_REF_LINK) + "&promo"
 
@@ -133,47 +124,49 @@ async def get_trial(callback: CallbackQuery):
 
 @router.callback_query(F.data == "give_invite_link")
 async def give_invite_link(callback: CallbackQuery, state: FSMContext):
-    user = await UsersDAO.find_one_or_none(tg_id=int(callback.from_user.id))
+    user = await UsersDAO.find_by_tg_id(int(callback.from_user.id))
     if not user:
         await callback.answer("Ошибка: вы не зарегистрированы", show_alert=True)
         return
 
     if not user.referral_link:
         await callback.message.edit_text(
-            "Скопируйте и вставьте Вашу реферальную ссылку в поле ниже"
+            "Скопируйте и вставьте Вашу реферальную ссылку в поле ниже", reply_markup=back
         )
         await state.set_state(ReferralForm.waiting_for_ref_link)
         return
 
     if user.invite_link:
-        invite_record = await InvitesDAO.find_one_or_none(owner_id=user.id)
-        if invite_record and os.path.exists(invite_record.qr_code_path):
-            input_file = FSInputFile(invite_record.qr_code_path)
+        invite_record = await InvitesDAO.find_by_owner(user.id)
+        if invite_record and any(os.path.exists(record.qr_code_path) for record in invite_record):
+            existing_invite = next(record for record in invite_record if os.path.exists(record.qr_code_path))
+            input_file = FSInputFile(existing_invite.qr_code_path)
             await callback.message.delete()
             await callback.message.answer_photo(
                 photo=input_file,
-                caption=f"Ваша пригласительная ссылка: {user.invite_link}", reply_markup=back
+                caption=f"Ваша пригласительная ссылка: {existing_invite.invite_link}", reply_markup=back
             )
             return
 
         qr_dir = BASE_DIR / "qrcodes"
         os.makedirs(qr_dir, exist_ok=True)
         qr_path = qr_dir / f"{user.tg_id}.png"
-        img = qrcode.make(user.invite_link)
-        img.save(qr_path)
-
-        input_file = FSInputFile(qr_path)
-        await callback.message.answer_photo(
-            photo=input_file,
-            caption=f"Ваша пригласительная ссылка: {user.invite_link}", reply_markup=back
-        )
-        return
+        invite_record = invite_record[0] if invite_record else None
+        if invite_record:
+            img = qrcode.make(invite_record.invite_link)
+            img.save(qr_path)
+            input_file = FSInputFile(qr_path)
+            await callback.message.answer_photo(
+                photo=input_file,
+                caption=f"Ваша пригласительная ссылка: {invite_record.invite_link}", reply_markup=back
+            )
+            return
 
     invite = await bot.create_chat_invite_link(
         chat_id=settings.CHAT_ID,
         name=user.username,
         creates_join_request=False,
-        member_limit=0  
+        member_limit=1
     )
     print(f"give_invite_link: created invite_link={invite.invite_link} for user_id={user.id}")
 
@@ -201,7 +194,7 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
 async def save_ref_link(message: Message, state: FSMContext):
     ref_link = message.text.strip()
     print(f"ref_link: {ref_link}, type: {type(ref_link)}")
-    user = await UsersDAO.find_one_or_none(tg_id=int(message.from_user.id))
+    user = await UsersDAO.find_by_tg_id(int(message.from_user.id))
     if not user:
         await message.answer("Ошибка: вы не зарегистрированы")
         await state.clear()
@@ -211,8 +204,17 @@ async def save_ref_link(message: Message, state: FSMContext):
         await message.answer(f"Ошибка: user.id не число, а {type(user.id)}: {user.id}")
         await state.clear()
         return
-    await UsersDAO.update(user.id, referral_link=ref_link)
-    user = await UsersDAO.find_one_or_none(id=user.id)
+
+    # Создаём запись в Referrals
+    referral_id = await ReferralsDAO.add_referral(user_id=user.id, referral_link=ref_link)
+    if referral_id:
+        await UsersDAO.update(user.id, referral_link=referral_id)
+    else:
+        await message.answer("Ошибка при создании реферальной ссылки")
+        await state.clear()
+        return
+
+    user = await UsersDAO.find_by_tg_id(user.tg_id)
     print(f"После update, user.id: {user.id}, type: {type(user.id)}")
     await process_invite(message, user)
     await state.clear()
@@ -241,7 +243,11 @@ async def process_invite(event, user):
     img.save(qr_path)
 
     await UsersDAO.update(user.id, invite_link=invite.invite_link)
-    invite_record = await InvitesDAO.add_invite(owner_id=user.id, invite_link=invite.invite_link, qr_code_path=str(qr_path))
+    invite_record = await InvitesDAO.add_invite(
+        owner_id=user.id,
+        invite_link=invite.invite_link,
+        qr_code_path=str(qr_path)
+    )
     print(f"process_invite: saved invite_record={invite_record.id if invite_record else None} for invite_link={invite.invite_link}")
 
     await send_qr_code(event, qr_path, invite.invite_link)
@@ -251,9 +257,9 @@ async def send_qr_code(event, qr_path, invite_link):
     caption = f"Ваша пригласительная ссылка: {invite_link}"
 
     if isinstance(event, CallbackQuery):
-        await event.message.answer_photo(input_file, caption=caption)
+        await event.message.answer_photo(input_file, caption=caption, reply_markup=back)
     else:
-        await event.answer_photo(input_file, caption=caption)
+        await event.answer_photo(input_file, caption=caption, reply_markup=back)
 
 @router.chat_member()
 async def track_invites(event: ChatMemberUpdated):
@@ -276,16 +282,15 @@ async def track_invites(event: ChatMemberUpdated):
         print(f"track_invites: no invite found for link={event.invite_link.invite_link}")
         return
 
-    ref_owner = await UsersDAO.find_by_id(invite.owner_id)
+    ref_owner = await UsersDAO.find_by_tg_id(invite.owner_id)
     if not ref_owner:
         print(f"track_invites: no ref_owner found for owner_id={invite.owner_id}")
         return
 
-    user = await UsersDAO.find_one_or_none(tg_id=event.from_user.id)
+    user = await UsersDAO.find_by_tg_id(event.from_user.id)
     if not user:
         print(f"track_invites: no user found for tg_id={event.from_user.id}, creating new user")
-        user = await UsersDAO.add_user(username=event.from_user.username or f"user_{event.from_user.id}", 
-                                       tg_id=event.from_user.id)
+        user = await UsersDAO.add_user(tg_id=event.from_user.id, username=event.from_user.username or f"user_{event.from_user.id}")
 
     print(f"track_invites: updating user id={user.id}, tg_id={event.from_user.id} with invite_link={event.invite_link.invite_link}, invited_by={ref_owner.username}")
     await UsersDAO.update(user.id, invite_link=event.invite_link.invite_link, invited_by=ref_owner.username)

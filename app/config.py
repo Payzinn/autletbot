@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     DB_NAME: str
     DB_HOST: str
     DEFAULT_REF_LINK: str
+    CHECK_LINK: str
 
 
     class Config:
