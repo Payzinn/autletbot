@@ -1,7 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram import Bot
 from app.config import settings
 from app.keyboards.kb_inline import main, abonement_keyboard, back
@@ -19,7 +19,6 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 bot = Bot(token=settings.BOT_TOKEN)
 router = Router()
-
 
 @router.message(CommandStart())
 async def start_cmd(message: Message):
@@ -139,13 +138,22 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
 
     if user.invite_link:
         invite_record = await InvitesDAO.find_by_owner(user.id)
+        referral_link = await ReferralsDAO.find_by_user_id_active(user.id)
+
         if invite_record and any(os.path.exists(record.qr_code_path) for record in invite_record):
             existing_invite = next(record for record in invite_record if os.path.exists(record.qr_code_path))
             input_file = FSInputFile(existing_invite.qr_code_path)
+
             await callback.message.delete()
+
+            caption = f"Ваша пригласительная ссылка: {existing_invite.invite_link}"
+            if referral_link:  
+                caption += f"\n\nВаша реферальная ссылка: {referral_link.referral_link}"
+
             await callback.message.answer_photo(
                 photo=input_file,
-                caption=f"Ваша пригласительная ссылка: {existing_invite.invite_link}", reply_markup=back
+                caption=caption,
+                reply_markup=back
             )
             return
 

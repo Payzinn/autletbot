@@ -35,9 +35,12 @@ class UsersDAO(BaseDAO):
     @classmethod
     async def find_by_tg_id(cls, tg_id: int):
         async with async_session_maker() as session:
-            query = select(cls.model).filter_by(tg_id=tg_id)
-            result = await session.execute(query)
-            return result.scalars().first()
+            try:
+                query = select(cls.model).filter_by(tg_id=tg_id)
+                result = await session.execute(query)
+                return result.scalars().first()
+            except Exception as e:
+                return False
 
     @classmethod
     async def find_by_username(cls, username: str):

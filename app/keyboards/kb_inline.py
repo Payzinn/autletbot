@@ -1,7 +1,9 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from app.database.users.dao import UsersDAO
+from app.database.referrals.dao import ReferralsDAO
 from app.config import settings
+from app.callbacks.admin.callback import *
 
 main = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="💵 Приобрести абонемент", callback_data="buy_abonement")],
@@ -19,6 +21,15 @@ back = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="Назад", callback_data="back")]
 ])
 
+admin_back = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Назад", callback_data="admin_back")]
+])
+
 admin_info_about_user = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="Информация о пользователе", callback_data="user_info")]
 ]) 
+
+user_info = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Отвязать активную реферальную ссылку", callback_data="unbind_link")],
+        [InlineKeyboardButton(text="Все рефералки пользователя", callback_data="all_ref_links")],
+    ])
