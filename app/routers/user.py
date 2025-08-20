@@ -7,6 +7,7 @@ from app.config import settings
 from app.keyboards.kb_inline import main, abonement_keyboard, back
 from app.database.users.dao import UsersDAO 
 from app.database.invites.dao import InvitesDAO
+from app.database.referrals.dao import ReferralsDAO
 from app.database.invites.states import ReferralForm
 from datetime import datetime
 from datetime import timedelta
@@ -61,7 +62,7 @@ async def buy_abonement(callback: CallbackQuery):
         await callback.answer("Ошибка: вы не зарегистрированы, пропишите /start", show_alert=True)
         return
     
-    if user.referral_link:
+    if user.referral_id:
         referral = await ReferralsDAO.find_by_user_id(user.id)
         if referral and referral.status == "active":
             await callback.message.edit_text("У вас уже есть активный абонемент", reply_markup=back)
@@ -95,7 +96,7 @@ async def get_trial(callback: CallbackQuery):
         await callback.answer("Ошибка: вы не зарегистрированы, пропишите /start", show_alert=True)
         return
     
-    if user.referral_link:
+    if user.referral_id:
         referral = await ReferralsDAO.find_by_user_id(user.id)
         if referral and referral.status == "active":
             await callback.message.edit_text("У вас уже есть активный пробный период", reply_markup=back)
@@ -129,7 +130,7 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Ошибка: вы не зарегистрированы", show_alert=True)
         return
 
-    if not user.referral_link:
+    if not user.referral_id:
         await callback.message.edit_text(
             "Скопируйте и вставьте Вашу реферальную ссылку в поле ниже", reply_markup=back
         )
@@ -205,17 +206,16 @@ async def save_ref_link(message: Message, state: FSMContext):
         await state.clear()
         return
 
-    # Создаём запись в Referrals
     referral_id = await ReferralsDAO.add_referral(user_id=user.id, referral_link=ref_link)
     if referral_id:
-        await UsersDAO.update(user.id, referral_link=referral_id)
+        await UsersDAO.update(user.id, referral_id=referral_id)  
     else:
         await message.answer("Ошибка при создании реферальной ссылки")
         await state.clear()
         return
 
     user = await UsersDAO.find_by_tg_id(user.tg_id)
-    print(f"После update, user.id: {user.id}, type: {type(user.id)}")
+    print(f"После update, user.id: {user.id}, type: {type(user.id)}, referral_id: {user.referral_id}")
     await process_invite(message, user)
     await state.clear()
 

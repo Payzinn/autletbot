@@ -40,3 +40,4 @@ class InvitesDAO(BaseDAO):
             result = await session.execute(query)
             return result.scalars().first()
 
+

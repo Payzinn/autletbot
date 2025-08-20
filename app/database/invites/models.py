@@ -12,4 +12,3 @@ class Invite(Base):
     invite_link = Column(String)
     qr_code_path = Column(String)
     created_at = Column(DateTime)
-    unique_code = Column(String, nullable=True)

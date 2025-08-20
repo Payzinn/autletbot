@@ -9,6 +9,7 @@ sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 from app.database.db import Base, DATABASE_URL
 from app.database.invites.models import Invite
 from app.database.users.models import Users
+from app.database.referrals.models import Referrals
 # Мои импорты
 
 from alembic import context

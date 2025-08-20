@@ -1,6 +1,6 @@
 from sqlalchemy import select, insert, update
 from app.database.db import async_session_maker
-from app.database.referrals.models import Referrals
+from app.database.referrals.models import Referrals, ReferralStatus
 from app.dao.base import BaseDAO
 from app.database.invites.models import Invite
 from datetime import datetime
@@ -10,17 +10,17 @@ class ReferralsDAO(BaseDAO):
     model = Referrals
 
     @classmethod
-    async def add_referral(cls, user_id: int, referral_link: str, status: str = "active"):
+    async def add_referral(cls, user_id: int, referral_link: str, status: ReferralStatus = ReferralStatus.ACTIVE):
         async with async_session_maker() as session:
             try:
                 query = cls.model(user_id=user_id, referral_link=referral_link, status=status)
                 session.add(query)
                 await session.commit()
                 await session.refresh(query)
-                return query.id  
+                return query.id  # Возвращаем ID для использования в Users.referral_id
             except Exception as e:
                 await session.rollback()
-                print(f"Ошибка при добавлении реферала: {e}")
+                print(f"Ошибка при добавлении реферала: {type(e).__name__} - {str(e)}")
                 return None
 
     @classmethod
@@ -31,7 +31,7 @@ class ReferralsDAO(BaseDAO):
             return result.scalars().first()
 
     @classmethod
-    async def update_status(cls, referral_id: int, status: str):
+    async def update_status(cls, referral_id: int, status: ReferralStatus):
         async with async_session_maker() as session:
             try:
                 query = (
@@ -43,5 +43,5 @@ class ReferralsDAO(BaseDAO):
                 await session.commit()
             except Exception as e:
                 await session.rollback()
-                print(f"Ошибка при обновлении статуса реферала: {e}")
+                print(f"Ошибка при обновлении статуса реферала: {type(e).__name__} - {str(e)}")
                 return None

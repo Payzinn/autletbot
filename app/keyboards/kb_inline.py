@@ -18,3 +18,7 @@ async def abonement_keyboard(link: str, button_text: str) -> InlineKeyboardMarku
 back = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="Назад", callback_data="back")]
 ])
+
+admin_info_about_user = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Информация о пользователе", callback_data="user_info")]
+]) 

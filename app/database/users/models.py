@@ -10,7 +10,7 @@ class Users(Base):
     id = Column(Integer, primary_key=True)
     username = Column(String, nullable=False)
     tg_id = Column(BigInteger, unique=True, nullable=False)
-    referral_link = Column(ForeignKey("referrals.id"), nullable=True)
+    referral_id = Column(Integer, ForeignKey("referrals.id"), nullable=True)
     invite_link = Column(String, nullable=True)
     invited_by = Column(String, nullable=True)
     created_at = Column(DateTime)

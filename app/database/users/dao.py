@@ -11,13 +11,13 @@ class UsersDAO(BaseDAO):
     model = Users
 
     @classmethod
-    async def add_user(cls, tg_id: int, username: str, referral_link_id: int = None, invite_link: str = None, invited_by: str = None):
+    async def add_user(cls, tg_id: int, username: str, referral_id: int = None, invite_link: str = None, invited_by: str = None):
         async with async_session_maker() as session:
             try:
                 query = cls.model(
                     username=username,
                     tg_id=tg_id,
-                    referral_link=referral_link_id,
+                    referral_id=referral_id,  
                     invite_link=invite_link,
                     invited_by=invited_by,
                     created_at=datetime.now(),
@@ -29,7 +29,7 @@ class UsersDAO(BaseDAO):
                 return query
             except Exception as e:
                 await session.rollback()
-                print(f"Ошибка при добавлении пользователя: {e}")
+                print(f"Ошибка при добавлении пользователя: {type(e).__name__} - {str(e)}")
                 return None
 
     @classmethod
@@ -72,5 +72,5 @@ class UsersDAO(BaseDAO):
                 await session.commit()
             except Exception as e:
                 await session.rollback()
-                print(f"Ошибка при обновлении пользователя: {e}")
+                print(f"Ошибка при обновлении пользователя: {type(e).__name__} - {str(e)}")
                 return None
