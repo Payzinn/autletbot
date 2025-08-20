@@ -86,8 +86,26 @@ async def user_all_links(callback: CallbackQuery, state: FSMContext):
 
 @router.message(Admin.make_active)
 async def make_link_active(message: Message, state: FSMContext):
-    if int(message.from_user.id) == settings.ADMIN_ID:
-        if not message.text.isdigit():
-            message.answer("Введите ещё раз именно порядковый номер ссылки, он рядом с ссылкой.")
-        await state.update_data(make_active=message.text)
+    if int(message.from_user.id) != settings.ADMIN_ID:
+        return
+    
+    if not message.text.isdigit():
+        await message.answer("Введите ещё раз именно порядковый номер ссылки, он рядом с ссылкой.")
+        return
+
+    index = int(message.text) - 1
+    data = await state.get_data()
+    user = await UsersDAO.find_by_tg_id(int(data['user_id']))
+    referrals = await ReferralsDAO.find_by_user_id_all(user.id)
+
+    if index < 0 or index >= len(referrals):
+        await message.answer("Неверный номер ссылки, попробуйте снова.")
+        return
+
+    for i, ref in enumerate(referrals):
+        status = ReferralStatus.ACTIVE if i == index else ReferralStatus.DISABLED
+        await ReferralsDAO.update_status(referral_id=ref.id, status=status)
+
+    await message.answer(f"Ссылка {referrals[index].referral_link} теперь активна!")
+    await state.clear()
         
