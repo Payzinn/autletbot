@@ -1,11 +1,12 @@
 from sqlalchemy import select, insert, update, delete
 from app.database.db import async_session_maker
-from app.database.users.models import Users
+from app.database.users.models import Users, UserStatus
 from app.database.referrals.models import Referrals 
 from app.dao.base import BaseDAO
 from app.database.invites.models import Invite
 from datetime import datetime
 from datetime import date
+from app.config import settings
 
 class UsersDAO(BaseDAO):
     model = Users
@@ -108,3 +109,45 @@ class UsersDAO(BaseDAO):
                 await session.rollback()
                 print(f"Ошибка при удалении пользователя: {type(e).__name__} - {str(e)}")
                 return None
+            
+    @staticmethod
+    async def set_admin_status(target_tg_id: int, actor_tg_id: int) -> bool:
+        if int(actor_tg_id) not in settings.ADMIN_ID:
+            return False
+
+        async with async_session_maker() as session:
+            result = await session.execute(
+                select(Users).where(Users.tg_id == target_tg_id)
+            )
+            user = result.scalar_one_or_none()
+            if not user:
+                return False
+
+            await session.execute(
+                update(Users)
+                .where(Users.id == user.id)
+                .values(status=UserStatus.ADMIN)
+            )
+            await session.commit()
+            return True
+        
+    @staticmethod
+    async def set_user_status(target_tg_id: int, actor_tg_id: int) -> bool:
+        if int(actor_tg_id) not in settings.ADMIN_ID:
+            return False
+
+        async with async_session_maker() as session:
+            result = await session.execute(
+                select(Users).where(Users.tg_id == target_tg_id)
+            )
+            user = result.scalar_one_or_none()
+            if not user:
+                return False
+
+            await session.execute(
+                update(Users)
+                .where(Users.id == user.id)
+                .values(status=UserStatus.USER)
+            )
+            await session.commit()
+            return True

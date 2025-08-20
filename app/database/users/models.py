@@ -17,7 +17,7 @@ class Users(Base):
     referral_id = Column(Integer, ForeignKey("referrals.id", ondelete="SET NULL"), nullable=True)
     invite_link = Column(String, nullable=True)
     invited_by = Column(String, nullable=True)
-    status = Column(Enum(UserStatus), default=UserStatus.USER)
+    status = Column(Enum(UserStatus, name="user_status"), default=UserStatus.USER)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
     referrals = relationship("Referrals", backref="user", cascade="all, delete", foreign_keys="Referrals.user_id" )

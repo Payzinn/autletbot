@@ -31,6 +31,8 @@ admin_info_about_user = InlineKeyboardMarkup(inline_keyboard=[
 
 user_info = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Отвязать активную реферальную ссылку", callback_data="unbind_link")],
+        [InlineKeyboardButton(text="Сделать админом", callback_data="make_admin")],
+        [InlineKeyboardButton(text="Убрать админку", callback_data="cancel_admin")],
         [InlineKeyboardButton(text="Все рефералки пользователя", callback_data="all_ref_links")],
         [InlineKeyboardButton(text="Удалить полностью", callback_data="delete_user")],
     ])
