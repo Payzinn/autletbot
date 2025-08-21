@@ -80,6 +80,7 @@ class UsersDAO(BaseDAO):
                 await session.rollback()
                 print(f"Ошибка при обновлении пользователя: {type(e).__name__} - {str(e)}")
                 return None
+            
     @classmethod
     async def delete(cls, user_id: int):
         async with async_session_maker() as session:
@@ -151,3 +152,15 @@ class UsersDAO(BaseDAO):
             )
             await session.commit()
             return True
+        
+    @staticmethod
+    async def get_admin(tg_id: int) -> bool:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                select(Users).where(
+                    Users.tg_id == tg_id,
+                    Users.status == UserStatus.ADMIN
+                )
+            )
+            user = result.scalar_one_or_none()
+            return user is not None
