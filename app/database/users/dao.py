@@ -7,6 +7,7 @@ from app.database.invites.models import Invite
 from datetime import datetime
 from datetime import date
 from app.config import settings
+import logging
 
 class UsersDAO(BaseDAO):
     model = Users

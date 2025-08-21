@@ -16,7 +16,10 @@ from aiogram.types import ChatMemberUpdated
 import qrcode
 import os
 from pathlib import Path
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 bot = Bot(token=settings.BOT_TOKEN)
 router = Router()
@@ -24,23 +27,30 @@ router = Router()
 @router.message(CommandStart())
 async def start_cmd(message: Message, state: FSMContext):
     await state.clear()
-    await handle_start(message)
+    await handle_start(message, state)
 
 @router.callback_query(F.data == "back")
-async def back_handler(callback: CallbackQuery):
+async def back_handler(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
-    await handle_start(callback.message)
+    await handle_start(callback.message, state)
 
 async def handle_start(message: Message, state: FSMContext):
-    await state.clear()
+    if state:
+        await state.clear()
     tg_id = message.from_user.id
     user = await UsersDAO.find_by_tg_id(tg_id)
     if user is None:
         user = await UsersDAO.add_user(tg_id=tg_id, username=message.from_user.username or f"user_{tg_id}")
-        print(f"start: created new user id={user.id}, tg_id={tg_id}")
+        if user is None:
+            logger.error(f"Не удалось создать пользователя с tg_id={tg_id}")
+            await message.answer("Ошибка при регистрации. Пожалуйста, попробуйте позже.", reply_markup=back)
+            return
+        logger.info(f"start: created new user id={user.id}, tg_id={tg_id}")
+    else:
+        logger.info(f"start: found existing user id={user.id}, tg_id={tg_id}")
 
     user_channel_status = await bot.get_chat_member(chat_id=settings.CHAT_ID, user_id=message.from_user.id)
-    print(f"start: user_id={tg_id}, channel_status={user_channel_status.status}")
+    logger.info(f"start: user_id={tg_id}, channel_status={user_channel_status.status}")
 
     if user_channel_status.status != "left":
         try:
