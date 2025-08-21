@@ -131,7 +131,7 @@ async def user_all_links(callback: CallbackQuery, state: FSMContext):
     for num, ref in enumerate(referrals):
         text += f"{num+1}. {ref.referral_link} (статус: {ref.status.value})\n"
     await state.set_state(Admin.make_active)
-    await callback.message.answer(f"{text}\n\nВведите номер ссылки, которая должна стать активной", reply_markup=admin_back_kb)
+    await callback.message.edit_text(f"{text}\n\nВведите номер ссылки, которая должна стать активной", reply_markup=admin_back_kb)
     await callback.answer()
 
 @router.message(Admin.make_active)
