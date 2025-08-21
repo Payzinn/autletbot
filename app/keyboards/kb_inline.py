@@ -45,5 +45,5 @@ confirm_delete_kb = InlineKeyboardMarkup(inline_keyboard=[
 ])
 
 admin_back_kb = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="Назад", callback_data="back_to_main")],
+    [InlineKeyboardButton(text="Назад", callback_data="back_to_user_info")],
 ])

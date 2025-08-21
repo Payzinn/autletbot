@@ -89,11 +89,31 @@ async def user_info_check(message: Message, state: FSMContext):
         return
     
     await message.answer(
-        f"Инфо о пользователе\nUsername: {user.username or "Нет"}\nTelegram ID: {user.tg_id or "Нет"}\n"
-        f"Дата регистрации: {user.created_at or "Нет"}\nПригласительная ссылка: {user.invite_link or 'Нет'}\n"
+        f"Инфо о пользователе\nUsername: {user.username or 'Нет'}\nTelegram ID: {user.tg_id or 'Нет'}\n"
+        f"Дата регистрации: {user.created_at or 'Нет'}\nПригласительная ссылка: {user.invite_link or 'Нет'}\n"
         f"Кем приглашен: {user.invited_by or 'Нет'}"
     )
     await message.answer("Выберите действие с пользователем:", reply_markup=user_info_kb)
+
+@router.callback_query(F.data == "back_to_user_info")
+async def back_to_user_info(callback: CallbackQuery, state: FSMContext):
+    if not await is_admin(callback.from_user.id):
+        return
+    data = await state.get_data()
+    user_id = data.get("user_id")
+    if not user_id:
+        await callback.message.edit_text("Сначала выберите пользователя.", reply_markup=users_kb)
+        await callback.answer()
+        return
+    
+    user = await UsersDAO.find_by_tg_id(user_id)
+    if not user:
+        await callback.message.edit_text("Пользователь не найден.", reply_markup=users_kb)
+        await callback.answer()
+        return
+    
+    await callback.message.edit_text(f"Выберите действие с пользователем:", reply_markup=user_info_kb)
+    await callback.answer()
 
 @router.callback_query(F.data == "unbind_link")
 async def user_unbind_link(callback: CallbackQuery, state: FSMContext):
@@ -156,8 +176,12 @@ async def make_link_active(message: Message, state: FSMContext):
         status = ReferralStatus.ACTIVE if i == index else ReferralStatus.DISABLED
         await ReferralsDAO.update_status(referral_id=ref.id, status=status)
 
-    await message.answer(f"Ссылка {referrals[index].referral_link} теперь активна!", reply_markup=user_info_kb)
-    await state.clear()
+    await message.answer(f"Ссылка {referrals[index].referral_link} теперь активна!")
+    await message.answer(
+        f"Выберите действие с пользователем:",
+        reply_markup=user_info_kb
+    )
+    # await state.clear()
 
 @router.callback_query(F.data == "delete_user")
 async def delete_user(callback: CallbackQuery, state: FSMContext):
@@ -192,17 +216,26 @@ async def confirm_delete_yes(callback: CallbackQuery, state: FSMContext):
 
     await UsersDAO.delete(user.id)
     await callback.answer(f"Пользователь [{user_id}] успешно удалён!", show_alert=True)
-    await callback.message.answer("Выберите действие с пользователем:", reply_markup=user_info_kb)
+    await callback.message.edit_text("Пользователь удалён. Выберите действие:", reply_markup=users_kb)
     await state.clear()
 
 @router.callback_query(F.data == "confirm_delete_no")
 async def confirm_delete_no(callback: CallbackQuery, state: FSMContext):
-    await callback.message.delete()
     if not await is_admin(callback.from_user.id):
         return
+    data = await state.get_data()
+    user_id = data.get("user_id")
+    user = await UsersDAO.find_by_tg_id(user_id)
+
+    if not user_id or not user:
+        await callback.answer("Пользователь не выбран или не найден.", show_alert=True)
+        return
+
     await callback.answer("Удаление пользователя отменено.", show_alert=True)
-    await callback.message.answer("Выберите действие с пользователем:", reply_markup=user_info_kb)
-    # await state.clear()
+    await callback.message.edit_text(
+        f"Выберите действие с пользователем:",
+        reply_markup=user_info_kb
+    )
 
 @router.callback_query(F.data == "make_admin")
 async def make_admin_handler(callback: CallbackQuery, state: FSMContext):

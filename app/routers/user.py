@@ -9,6 +9,7 @@ from app.database.users.dao import UsersDAO
 from app.database.invites.dao import InvitesDAO
 from app.database.referrals.dao import ReferralsDAO
 from app.database.invites.states import ReferralForm
+from app.database.referrals.models import ReferralStatus
 from datetime import datetime
 from datetime import timedelta
 from aiogram.types import ChatMemberUpdated
@@ -63,8 +64,8 @@ async def buy_abonement(callback: CallbackQuery):
         return
     
     if user.referral_id:
-        referral = await ReferralsDAO.find_by_user_id(user.id)
-        if referral and referral.status == "active":
+        referrals = await ReferralsDAO.find_by_user_id(user.id)
+        if any(referral.status == ReferralStatus.ACTIVE for referral in referrals):
             await callback.message.edit_text("У вас уже есть активный абонемент", reply_markup=back)
             return
 
@@ -97,8 +98,8 @@ async def get_trial(callback: CallbackQuery):
         return
     
     if user.referral_id:
-        referral = await ReferralsDAO.find_by_user_id(user.id)
-        if referral and referral.status == "active":
+        referrals = await ReferralsDAO.find_by_user_id(user.id)
+        if any(referral.status == ReferralStatus.ACTIVE for referral in referrals):
             await callback.message.edit_text("У вас уже есть активный пробный период", reply_markup=back)
             return
 
