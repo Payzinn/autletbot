@@ -89,8 +89,8 @@ async def user_info_check(message: Message, state: FSMContext):
         return
     
     await message.answer(
-        f"Инфо о пользователе\nUsername: {user.username}\nTelegram ID: {user.tg_id}\n"
-        f"Дата регистрации: {user.created_at}\nПригласительная ссылка: {user.invite_link or 'Нет'}\n"
+        f"Инфо о пользователе\nUsername: {user.username or "Нет"}\nTelegram ID: {user.tg_id or "Нет"}\n"
+        f"Дата регистрации: {user.created_at or "Нет"}\nПригласительная ссылка: {user.invite_link or 'Нет'}\n"
         f"Кем приглашен: {user.invited_by or 'Нет'}"
     )
     await message.answer("Выберите действие с пользователем:", reply_markup=user_info_kb)
