@@ -21,28 +21,29 @@ back = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="Назад", callback_data="back")]
 ])
 
-admin_back = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="Назад", callback_data="admin_back")]
+admin_main_kb = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Управление пользователями", callback_data="users_menu")],
 ])
 
-admin_info_about_user = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="Информация о пользователе", callback_data="user_info")]
-]) 
+users_kb = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Инфо о пользователе", callback_data="user_info")],
+    [InlineKeyboardButton(text="Назад", callback_data="back_to_main")],
+])
 
-user_info = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Отвязать активную реферальную ссылку", callback_data="unbind_link")],
-        [InlineKeyboardButton(text="Сделать админом", callback_data="make_admin")],
-        [InlineKeyboardButton(text="Убрать админку", callback_data="cancel_admin")],
-        [InlineKeyboardButton(text="Все рефералки пользователя", callback_data="all_ref_links")],
-        [InlineKeyboardButton(text="Удалить полностью", callback_data="delete_user")],
-    ])
+user_info_kb = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Отвязать рефералку", callback_data="unbind_link")],
+    [InlineKeyboardButton(text="Все реферальные ссылки", callback_data="all_ref_links")],
+    [InlineKeyboardButton(text="Удалить пользователя", callback_data="delete_user")],
+    [InlineKeyboardButton(text="Сделать админом", callback_data="make_admin")],
+    [InlineKeyboardButton(text="Отозвать админ", callback_data="cancel_admin")],
+    [InlineKeyboardButton(text="Назад", callback_data="back_to_users")],
+])
 
+confirm_delete_kb = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Да", callback_data="confirm_delete_yes"),
+     InlineKeyboardButton(text="Нет", callback_data="confirm_delete_no")],
+])
 
-confirm_delete_kb = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            InlineKeyboardButton(text="Да", callback_data="confirm_delete_yes"),
-            InlineKeyboardButton(text="Нет", callback_data="confirm_delete_no"),
-        ]
-    ]
-)
+admin_back_kb = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Назад", callback_data="back_to_main")],
+])
