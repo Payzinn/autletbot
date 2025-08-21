@@ -17,7 +17,6 @@ from aiogram.types import ChatMemberUpdated
 import qrcode
 import os
 from pathlib import Path
-from app.callbacks.admin.callback import *
 
 async def is_admin(tg_id: int) -> bool:
     if tg_id in settings.ADMIN_ID:

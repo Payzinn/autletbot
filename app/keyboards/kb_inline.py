@@ -3,7 +3,6 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from app.database.users.dao import UsersDAO
 from app.database.referrals.dao import ReferralsDAO
 from app.config import settings
-from app.callbacks.admin.callback import *
 
 main = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="💵 Приобрести абонемент", callback_data="buy_abonement")],

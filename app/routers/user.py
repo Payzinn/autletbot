@@ -31,7 +31,8 @@ async def back_handler(callback: CallbackQuery):
     await callback.message.delete()
     await handle_start(callback.message)
 
-async def handle_start(message: Message):
+async def handle_start(message: Message, state: FSMContext):
+    await state.clear()
     tg_id = message.from_user.id
     user = await UsersDAO.find_by_tg_id(tg_id)
     if user is None:
