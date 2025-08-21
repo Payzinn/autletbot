@@ -22,7 +22,7 @@ back = InlineKeyboardMarkup(inline_keyboard=[
 ])
 
 admin_main_kb = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="Управление пользователями", callback_data="users_menu")],
+    [InlineKeyboardButton(text="Управление пользователями", callback_data="user_info")],
 ])
 
 users_kb = InlineKeyboardMarkup(inline_keyboard=[
