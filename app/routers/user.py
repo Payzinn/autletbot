@@ -165,7 +165,6 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
     img = qrcode.make(invite.invite_link)
     img.save(qr_path)
 
-    # Сохраняем invite
     await UsersDAO.update(user.id, invite_link=invite.invite_link)
     await InvitesDAO.add_invite(owner_id=user.id, invite_link=invite.invite_link, qr_code_path=str(qr_path))
 

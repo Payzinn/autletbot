@@ -55,14 +55,20 @@ class UsersDAO(BaseDAO):
     @classmethod
     async def find_referral_by_invite_link(cls, invite_link: str):
         async with async_session_maker() as session:
-            query = (
-                select(Referrals.referral_link)
-                .join(Users, Users.id == Invite.owner_id)
-                .join(Referrals, Referrals.user_id == Users.id)
-                .filter(Invite.invite_link == invite_link)
-            )
-            result = await session.execute(query)
-            return result.scalars().first()
+            try:
+                query = (
+                    select(Referrals.referral_link)
+                    .select_from(Users)  # Начинаем с таблицы users
+                    .join(Invite, Invite.owner_id == Users.id)
+                    .join(Referrals, Referrals.user_id == Users.id)
+                    .filter(Invite.invite_link == invite_link)
+                )
+                print(f"Executing query: {query}")
+                result = await session.execute(query)
+                return result.scalars().first()
+            except Exception as e:
+                print(f"Ошибка в find_referral_by_invite_link: {type(e).__name__} - {str(e)}")
+                return None
 
     @classmethod
     async def update(cls, user_id: int, **kwargs):
