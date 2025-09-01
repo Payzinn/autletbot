@@ -97,8 +97,8 @@ async def buy_abonement(callback: CallbackQuery):
 
     print(f"buy_abonement: user.id: {user.id}, type: {type(user.id)}, final_link: {final_link}")
     await callback.message.edit_text(
-        "Ссылка для приобретения абонемента:",
-        reply_markup=await abonement_keyboard(link=final_link, button_text="💵 Купить абонемент")
+        "Ваша ссылка на регистрацию Autlet travel",
+        reply_markup=await abonement_keyboard(link=final_link, button_text="💵 Продолжить")
     )
 
 @router.callback_query(F.data == "get_seven_days_trial")
@@ -159,8 +159,8 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
         existing_invite = next((record for record in invite_record if os.path.exists(record.qr_code_path)), None)
         if existing_invite:
             input_file = FSInputFile(existing_invite.qr_code_path)
-            caption = f"Ваша пригласительная ссылка: {existing_invite.invite_link}\n" \
-                      f"Ваша активная реферальная ссылка: {active_referral.referral_link}"
+            caption = f"Это твоя ссылка и QR-код для приглашения в группу. По ней мы будем знать, что человек пришел от тебя и дадим ему при регистрации твою реферальную ссылку\n{existing_invite.invite_link}\n\n" 
+                    #   f"Ваша активная реферальная ссылка: {active_referral.referral_link}"
             await callback.message.delete()
             await callback.message.answer_photo(photo=input_file, caption=caption, reply_markup=back)
             return
@@ -182,8 +182,8 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
     input_file = FSInputFile(qr_path)
     await callback.message.answer_photo(
         photo=input_file,
-        caption=f"Ваша пригласительная ссылка: {invite.invite_link}\n"
-                f"Ваша активная реферальная ссылка: {active_referral.referral_link}",
+        caption=f"Это твоя ссылка и QR-код для приглашения в группу. По ней мы будем знать, что человек пришел от тебя и дадим ему при регистрации твою реферальную ссылку\n{invite.invite_link}\n\n",
+                # f"Ваша активная реферальная ссылка: {active_referral.referral_link}",
         reply_markup=back
     )
 
@@ -250,7 +250,7 @@ async def process_invite(event, user):
 
 async def send_qr_code(event, qr_path, invite_link):
     input_file = FSInputFile(qr_path)
-    caption = f"Ваша пригласительная ссылка: {invite_link}"
+    caption = f"Это твоя ссылка и QR-код для приглашения в группу. По ней мы будем знать, что человек пришел от тебя и дадим ему при регистрации твою реферальную ссылку\n{invite_link}\n\n"
 
     if isinstance(event, CallbackQuery):
         await event.message.answer_photo(input_file, caption=caption, reply_markup=back)
