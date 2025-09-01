@@ -86,7 +86,7 @@ async def buy_abonement(callback: CallbackQuery):
         if referral:
             referral_url = referral
     
-    final_link = referral_url or settings.DEFAULT_REF_LINK
+    final_link = settings.DEFAULT_REF_LINK
 
     # await SubscriptionsDAO.add_subscription(
     #     user_id=user.id,
