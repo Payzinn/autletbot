@@ -200,8 +200,7 @@ async def give_invite_link(callback: CallbackQuery, state: FSMContext):
     invite = await bot.create_chat_invite_link(
         chat_id=settings.CHAT_ID,
         name=user.username,
-        creates_join_request=False,
-        member_limit=1
+        creates_join_request=False
     )
 
     qr_path = qr_dir / f"{user.tg_id}.png"
@@ -259,8 +258,7 @@ async def process_invite(event, user):
     invite = await bot.create_chat_invite_link(
         chat_id=settings.CHAT_ID,
         name=user.username,
-        creates_join_request=False,
-        member_limit=1
+        creates_join_request=False
     )
     print(f"process_invite: created invite_link={invite.invite_link} for user_id={user.id}")
 
