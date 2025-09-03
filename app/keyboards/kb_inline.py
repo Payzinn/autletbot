@@ -10,6 +10,10 @@ main = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="📜 Получить пригласительную ссылку", callback_data="give_invite_link")],
 ])
 
+check_subscription = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Продолжить", callback_data="check_sub")]
+])
+
 async def abonement_keyboard(link: str, button_text: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=button_text, url=link)],

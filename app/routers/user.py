@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.filters import CommandStart, Command
 from aiogram import Bot
 from app.config import settings
-from app.keyboards.kb_inline import main, abonement_keyboard, back
+from app.keyboards.kb_inline import main, abonement_keyboard, back, check_subscription
 from app.database.users.dao import UsersDAO 
 from app.database.invites.dao import InvitesDAO
 from app.database.referrals.dao import ReferralsDAO
@@ -34,6 +34,38 @@ async def back_handler(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await handle_start(callback.message, state)
 
+@router.callback_query(F.data == "check_sub")
+async def check_subscription_handler(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    tg_id = callback.from_user.id
+    try:
+        user_channel_status = await bot.get_chat_member(chat_id=settings.CHAT_ID, user_id=tg_id)
+        logger.info(f"check_sub: user_id={tg_id}, channel_status={user_channel_status.status}")
+
+        if user_channel_status.status != "left":
+            try:
+                await callback.message.edit_text("Выберите необходимое действие", reply_markup=main)
+            except Exception as e:
+                logger.error(f"check_sub: failed to edit message for user_id={tg_id}, error={str(e)}")
+                await callback.message.answer("Выберите необходимое действие", reply_markup=main)
+        else:
+            await callback.answer(
+                "Пожалуйста, подпишитесь на группу, чтобы продолжить!",
+                show_alert=True
+            )
+            current_text = callback.message.text or callback.message.caption
+            expected_text = f"Для получения ознакомительного доступа Вам необходимо подписаться на группу:\nhttps://t.me/autlettravelbiznes"
+            if current_text != expected_text:
+                try:
+                    await callback.message.edit_text(
+                        expected_text,
+                        reply_markup=check_subscription
+                    )
+                except Exception as e:
+                    logger.error(f"check_sub: failed to edit message for user_id={tg_id}, error={str(e)}")
+    except Exception as e:
+        logger.error(f"check_sub: error checking subscription for user_id={tg_id}, error={str(e)}")
+        await callback.message.answer("Произошла ошибка при проверке подписки. Попробуйте позже.", reply_markup=back)
+
 async def handle_start(message: Message, state: FSMContext):
     if state:
         await state.clear()
@@ -60,11 +92,11 @@ async def handle_start(message: Message, state: FSMContext):
     else:
         try:
             await message.edit_text(
-                "Для получения пробного периода Вам необходимо подписаться на группу https://t.me/autlettravelbiznes"
+                f"Для получения ознакомительного доступа Вам необходимо подписаться на группу:\nhttps://t.me/autlettravelbiznes", reply_markup=check_subscription
             )
         except:
             await message.answer(
-                "Для получения пробного периода Вам необходимо подписаться на группу https://t.me/autlettravelbiznes"
+                f"Для получения ознакомительного доступа Вам необходимо подписаться на группу:\nhttps://t.me/autlettravelbiznes", reply_markup=check_subscription
             )
 
 @router.callback_query(F.data == "buy_abonement")
@@ -278,7 +310,7 @@ async def track_invites(event: ChatMemberUpdated):
         print(f"track_invites: no invite found for link={event.invite_link.invite_link}")
         return
 
-    ref_owner = await UsersDAO.find_by_tg_id(invite.owner_id)
+    ref_owner = await UsersDAO.find_by_id(invite.owner_id)
     if not ref_owner:
         print(f"track_invites: no ref_owner found for owner_id={invite.owner_id}")
         return
@@ -287,10 +319,18 @@ async def track_invites(event: ChatMemberUpdated):
     if not user:
         print(f"track_invites: no user found for tg_id={event.from_user.id}, creating new user")
         user = await UsersDAO.add_user(tg_id=event.from_user.id, username=event.from_user.username or f"user_{event.from_user.id}")
+        if not user:
+            print(f"track_invites: failed to create user for tg_id={event.from_user.id}")
+            return
 
-    print(f"track_invites: updating user id={user.id}, tg_id={event.from_user.id} with invite_link={event.invite_link.invite_link}, invited_by={ref_owner.username}")
-    await UsersDAO.update(user.id, invite_link=event.invite_link.invite_link, invited_by=ref_owner.username)
-
+    try:
+        print(f"track_invites: updating user id={user.id}, tg_id={event.from_user.id} with invite_link={event.invite_link.invite_link}, invited_by={ref_owner.username}")
+        await UsersDAO.update(user.id, invite_link=event.invite_link.invite_link, invited_by=ref_owner.username)
+        print(f"track_invites: successfully updated user id={user.id}")
+    except Exception as e:
+        print(f"track_invites: error updating user id={user.id}, error={str(e)}")
+        return
+    
 @router.message()
 async def mes(message: Message):
     print(message.chat.id)
